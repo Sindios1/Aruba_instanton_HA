@@ -60,11 +60,12 @@ class ArubaInstantOnAPI:
             _LOGGER.debug("Attempting initial validation for user: %s", self.username)
             async with self.session.post(
                 f"{self.sso_url}/aio/api/v1/mfa/validate/full",
-                data=login_data,
-                headers={"Content-Type": "application/x-www-form-urlencoded"}
+                json=login_data,
+                headers={"Accept": "application/json"}
             ) as resp:
                 if resp.status != 200:
-                    _LOGGER.error("Initial validation failed with status %s: %s", resp.status, await resp.text())
+                    resp_text = await resp.text()
+                    _LOGGER.error("Initial validation failed with status %s: %s", resp.status, resp_text)
                     return False
                 res_json = await resp.json()
                 session_token = res_json.get("access_token")
