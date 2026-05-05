@@ -1,0 +1,26 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "Aruba Instant On Přihlášení",
+        "data": {
+          "username": "E-mail",
+          "password": "Heslo"
+        }
+      },
+      "site": {
+        "title": "Vyberte Lokalitu",
+        "data": {
+          "site_id": "Lokalita"
+        }
+      }
+    },
+    "error": {
+      "cannot_connect": "Nepodařilo se připojit k portálu Aruba. Zkontrolujte údaje a ujistěte se, že je vypnuto MFA.",
+      "no_sites": "Pro tento účet nebyly nalezeny žádné lokality."
+    },
+    "abort": {
+      "already_configured": "Tato lokalita je již nastavena"
+    }
+  }
+}

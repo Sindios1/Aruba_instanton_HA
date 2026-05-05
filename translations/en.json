@@ -1,0 +1,26 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "Aruba Instant On Login",
+        "data": {
+          "username": "Email",
+          "password": "Password"
+        }
+      },
+      "site": {
+        "title": "Select Site",
+        "data": {
+          "site_id": "Site"
+        }
+      }
+    },
+    "error": {
+      "cannot_connect": "Failed to connect to Aruba portal. Check your credentials and ensure MFA is disabled.",
+      "no_sites": "No sites found for this account."
+    },
+    "abort": {
+      "already_configured": "Site is already configured"
+    }
+  }
+}

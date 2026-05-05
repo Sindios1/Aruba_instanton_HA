@@ -1,0 +1,10 @@
+{
+  "domain": "aruba_instant_on",
+  "name": "Aruba Instant On",
+  "documentation": "https://github.com/your-repo/aruba_instant_on",
+  "requirements": ["requests>=2.25.1"],
+  "codeowners": ["@your-username"],
+  "config_flow": true,
+  "iot_class": "cloud_polling",
+  "version": "1.0.0"
+}
