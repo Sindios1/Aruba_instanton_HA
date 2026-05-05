@@ -20,28 +20,51 @@ class ArubaInstantOnAPI:
         self.sso_url = "https://sso.arubainstanton.com"
         self.api_url = "https://nb.portal.arubainstanton.com/api"
         self.access_token = None
+        self.session.headers.update({
+            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36"
+        })
+
+    def _aruba_base64_encode(self, data: bytes) -> str:
+        """Specific Base64 encoding used by Aruba Instant On."""
+        encoded = base64.b64encode(data).decode('utf-8')
+        stripped = encoded.rstrip('=')
+        padding_count = len(encoded) - len(stripped)
+        # Aruba's custom encoding appends the number of padding characters
+        custom_encoded = f"{stripped}{padding_count}"
+        return custom_encoded.replace('+', '-').replace('/', '_')
 
     def _generate_pkce(self):
-        code_verifier = secrets.token_urlsafe(32)[:43]
-        code_challenge = base64.urlsafe_b64encode(
-            hashlib.sha256(code_verifier.encode('utf-8')).digest()
-        ).decode('utf-8').replace('=', '').replace('+', '-').replace('/', '_')
+        # The PS script generates 32 bytes for the verifier
+        verifier_bytes = secrets.token_bytes(32)
+        code_verifier = self._aruba_base64_encode(verifier_bytes)[:43]
+        
+        sha256_hash = hashlib.sha256(code_verifier.encode('utf-8')).digest()
+        code_challenge = self._aruba_base64_encode(sha256_hash)[:43]
+        
+        _LOGGER.debug("Generated PKCE - Verifier: %s, Challenge: %s", code_verifier, code_challenge)
         return code_verifier, code_challenge
 
     async def login(self) -> bool:
         try:
+            # 0. Fetch dynamic settings to get Client ID
+            async with self.session.get("https://portal.arubainstanton.com/settings.json") as resp:
+                settings = await resp.json()
+                self.client_id = settings.get("ssoClientIdAuthZ", self.client_id)
+                _LOGGER.debug("Using Client ID: %s", self.client_id)
+
             # 1. Validate credentials and get session token
             login_data = {
                 "username": self.username,
                 "password": self.password
             }
+            _LOGGER.debug("Attempting initial validation for user: %s", self.username)
             async with self.session.post(
                 f"{self.sso_url}/aio/api/v1/mfa/validate/full",
                 data=login_data,
                 headers={"Content-Type": "application/x-www-form-urlencoded"}
             ) as resp:
                 if resp.status != 200:
-                    _LOGGER.error("Login failed with status %s", resp.status)
+                    _LOGGER.error("Initial validation failed with status %s: %s", resp.status, await resp.text())
                     return False
                 res_json = await resp.json()
                 session_token = res_json.get("access_token")
@@ -70,16 +93,18 @@ class ArubaInstantOnAPI:
                 params=auth_params,
                 allow_redirects=False
             ) as resp:
+                _LOGGER.debug("Authorization response status: %s", resp.status)
                 location = resp.headers.get("Location")
                 if not location:
-                    _LOGGER.error("No redirect location found in auth response")
+                    _LOGGER.error("No redirect location found in auth response. Status: %s, Body: %s", resp.status, await resp.text())
                     return False
                 
+                _LOGGER.debug("Redirect location: %s", location)
                 parsed_url = urlparse(location)
                 auth_code = parse_qs(parsed_url.query).get("code", [None])[0]
             
             if not auth_code:
-                _LOGGER.error("Failed to get authorization code")
+                _LOGGER.error("Failed to get authorization code from location: %s", location)
                 return False
 
             # 3. Exchange code for access token
@@ -91,16 +116,18 @@ class ArubaInstantOnAPI:
                 "grant_type": "authorization_code"
             }
             
+            _LOGGER.debug("Exchanging code for token")
             async with self.session.post(
                 f"{self.sso_url}/as/token.oauth2",
                 data=token_data,
                 headers={"Content-Type": "application/x-www-form-urlencoded"}
             ) as resp:
                 if resp.status != 200:
-                    _LOGGER.error("Token exchange failed with status %s", resp.status)
+                    _LOGGER.error("Token exchange failed with status %s: %s", resp.status, await resp.text())
                     return False
                 res_json = await resp.json()
                 self.access_token = res_json.get("access_token")
+                _LOGGER.debug("Successfully obtained access token")
             
             if self.access_token:
                 # Store access token in session headers for subsequent requests
