@@ -1,0 +1,8 @@
+{
+  "name": "Aruba Instant On",
+  "content_in_root": false,
+  "zip_release": false,
+  "filename": "custom_components/aruba_instant_on",
+  "render_readme": true,
+  "homeassistant": "2021.12.0"
+}
