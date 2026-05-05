@@ -16,9 +16,9 @@ class ArubaInstantOnAPI:
         self.password = password
         self.session = session
         self.client_id = "987b543b-210d-9ed6-54a2-10a2c4567fa0"
-        self.redirect_uri = "https://portal.arubainstanton.com"
+        self.redirect_uri = "https://portal.instant-on.hpe.com"
         self.sso_url = "https://sso.arubainstanton.com"
-        self.api_url = "https://nb.portal.arubainstanton.com/api"
+        self.api_url = "https://portal.instant-on.hpe.com/api"
         self.access_token = None
         self._headers = {
             "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36"
@@ -47,7 +47,7 @@ class ArubaInstantOnAPI:
     async def login(self) -> bool:
         try:
             # 0. Fetch dynamic settings to get Client ID
-            async with self.session.get("https://portal.arubainstanton.com/settings.json") as resp:
+            async with self.session.get("https://portal.instant-on.hpe.com/settings.json") as resp:
                 settings = await resp.json()
                 self.client_id = settings.get("ssoClientIdAuthZ", self.client_id)
                 _LOGGER.debug("Using Client ID: %s", self.client_id)
