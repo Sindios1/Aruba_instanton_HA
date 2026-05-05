@@ -20,9 +20,9 @@ class ArubaInstantOnAPI:
         self.sso_url = "https://sso.arubainstanton.com"
         self.api_url = "https://nb.portal.arubainstanton.com/api"
         self.access_token = None
-        self.session.headers.update({
+        self._headers = {
             "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36"
-        })
+        }
 
     def _aruba_base64_encode(self, data: bytes) -> str:
         """Specific Base64 encoding used by Aruba Instant On."""
@@ -130,10 +130,10 @@ class ArubaInstantOnAPI:
                 _LOGGER.debug("Successfully obtained access token")
             
             if self.access_token:
-                # Store access token in session headers for subsequent requests
-                self.session._default_headers.update({
+                self._headers.update({
                     "Authorization": f"Bearer {self.access_token}",
-                    "x-ion-api-version": "7"
+                    "x-ion-api-version": "7",
+                    "Content-Type": "application/json"
                 })
                 return True
             
@@ -144,24 +144,33 @@ class ArubaInstantOnAPI:
             return False
 
     async def get_sites(self) -> List[Dict[str, Any]]:
-        async with self.session.get(f"{self.api_url}/sites/") as resp:
-            if resp.status == 401:
-                if await self.login():
-                    return await self.get_sites()
-                return []
-            res_json = await resp.json()
-            return res_json.get("elements", [])
+        try:
+            async with self.session.get(f"{self.api_url}/sites/", headers=self._headers) as resp:
+                if resp.status == 401:
+                    _LOGGER.debug("Access token expired, re-logging")
+                    if await self.login():
+                        return await self.get_sites()
+                    return []
+                resp.raise_for_status()
+                res_json = await resp.json()
+                return res_json.get("elements", [])
+        except Exception as e:
+            _LOGGER.error("Failed to get sites: %s", e)
+            return []
 
     async def get_inventory(self, site_id: str) -> List[Dict[str, Any]]:
-        async with self.session.get(f"{self.api_url}/sites/{site_id}/inventory") as resp:
+        async with self.session.get(f"{self.api_url}/sites/{site_id}/inventory", headers=self._headers) as resp:
+            resp.raise_for_status()
             res_json = await resp.json()
             return res_json.get("elements", [])
 
     async def get_clients(self, site_id: str) -> List[Dict[str, Any]]:
-        async with self.session.get(f"{self.api_url}/sites/{site_id}/clientSummary") as resp:
+        async with self.session.get(f"{self.api_url}/sites/{site_id}/clientSummary", headers=self._headers) as resp:
+            resp.raise_for_status()
             res_json = await resp.json()
             return res_json.get("elements", [])
 
     async def get_site_details(self, site_id: str) -> Dict[str, Any]:
-        async with self.session.get(f"{self.api_url}/sites/{site_id}/landingPage") as resp:
+        async with self.session.get(f"{self.api_url}/sites/{site_id}/landingPage", headers=self._headers) as resp:
+            resp.raise_for_status()
             return await resp.json()

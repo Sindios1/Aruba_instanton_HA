@@ -35,16 +35,20 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                 session
             )
 
-            if await api.login():
-                sites = await api.get_sites()
-                if not sites:
-                    errors["base"] = "no_sites"
+            try:
+                if await api.login():
+                    sites = await api.get_sites()
+                    if not sites:
+                        errors["base"] = "no_sites"
+                    else:
+                        self.user_input = user_input
+                        self.sites = {site["id"]: site["name"] for site in sites}
+                        return await self.async_step_site()
                 else:
-                    self.user_input = user_input
-                    self.sites = {site["id"]: site["name"] for site in sites}
-                    return await self.async_step_site()
-            else:
-                errors["base"] = "cannot_connect"
+                    errors["base"] = "cannot_connect"
+            except Exception as e:
+                _LOGGER.exception("Unexpected error during config flow")
+                errors["base"] = "unknown"
 
         return self.async_show_form(
             step_id="user", data_schema=STEP_USER_DATA_SCHEMA, errors=errors
