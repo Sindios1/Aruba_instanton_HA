@@ -55,13 +55,19 @@ class ArubaInstantOnAPI:
             # 1. Validate credentials and get session token
             login_data = {
                 "username": self.username,
-                "password": self.password
+                "password": self.password,
+                "client_id": self.client_id
             }
             _LOGGER.debug("Attempting initial validation for user: %s", self.username)
             async with self.session.post(
                 f"{self.sso_url}/aio/api/v1/mfa/validate/full",
-                json=login_data,
-                headers={"Accept": "application/json"}
+                data=login_data,
+                headers={
+                    "Content-Type": "application/x-www-form-urlencoded",
+                    "Accept": "application/json",
+                    "Origin": "https://portal.instant-on.hpe.com",
+                    "Referer": "https://portal.instant-on.hpe.com/"
+                }
             ) as resp:
                 if resp.status != 200:
                     resp_text = await resp.text()
